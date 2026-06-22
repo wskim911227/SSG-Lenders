@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SSG 랜더스 선수 기록</title>
+  <title>KBO 구단 선수 기록</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -14,10 +14,10 @@
     <header class="header">
       <div class="header-inner">
         <div class="brand">
-          <span class="brand-badge">SSG</span>
+          <span id="brandBadge" class="brand-badge">KBO</span>
           <div>
-            <h1>SSG 랜더스 선수 기록</h1>
-            <p>시즌별 타자·투수 성적과 선수 검색</p>
+            <h1 id="pageTitle">KBO 구단 선수 기록</h1>
+            <p id="pageSubtitle">시즌별 타자·투수 성적과 선수 검색</p>
           </div>
         </div>
       </div>
@@ -25,6 +25,11 @@
 
     <main class="main">
       <section class="controls card">
+        <div class="control-row">
+          <label for="teamSelect">구단</label>
+          <select id="teamSelect"></select>
+        </div>
+
         <div class="control-row">
           <label for="seasonSelect">시즌</label>
           <select id="seasonSelect"></select>
@@ -76,7 +81,7 @@
     </main>
 
     <footer class="footer">
-      <p>데이터 출처: <a href="https://www.yagoonara.com/teams/7" target="_blank" rel="noopener">야구나라</a> · SK/SSG 역대 선수 기록 기준</p>
+      <p>데이터 출처: <a id="teamSourceLink" href="https://www.yagoonara.com" target="_blank" rel="noopener">야구나라</a> · KBO 10개 구단 역대 선수 기록 기준</p>
     </footer>
   </div>
 
@@ -84,6 +89,7 @@
     window.APP_CONFIG = {
       minSeason: {{ min_season }},
       maxSeason: {{ max_season }},
+      defaultTeamId: {{ default_team_id }},
     };
   </script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>

@@ -106,6 +106,12 @@ input[type="search"] {
 
 select {
   min-width: 120px;
+  max-width: 100%;
+}
+
+#teamSelect {
+  min-width: 220px;
+  flex: 1;
 }
 
 .search-wrap {

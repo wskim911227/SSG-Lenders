@@ -1,5 +1,6 @@
-const { minSeason, maxSeason } = window.APP_CONFIG;
+const { minSeason, maxSeason, defaultTeamId } = window.APP_CONFIG;
 
+const teamSelect = document.getElementById("teamSelect");
 const seasonSelect = document.getElementById("seasonSelect");
 const loadSeasonBtn = document.getElementById("loadSeasonBtn");
 const tabs = document.querySelectorAll(".tab");
@@ -17,8 +18,14 @@ const playerMeta = document.getElementById("playerMeta");
 const playerHead = document.getElementById("playerHead");
 const playerBody = document.getElementById("playerBody");
 const closePlayerBtn = document.getElementById("closePlayerBtn");
+const brandBadge = document.getElementById("brandBadge");
+const pageTitle = document.getElementById("pageTitle");
+const pageSubtitle = document.getElementById("pageSubtitle");
+const teamSourceLink = document.getElementById("teamSourceLink");
 
 let currentType = "hitter";
+let currentTeamId = defaultTeamId;
+let teams = [];
 let searchTimer = null;
 
 const HITTER_COLUMNS = [
@@ -89,6 +96,40 @@ function initSeasonSelect() {
     option.textContent = `${year} 시즌`;
     seasonSelect.appendChild(option);
   }
+}
+
+function getSelectedTeam() {
+  return teams.find((team) => String(team.id) === teamSelect.value) || teams[0];
+}
+
+function updateTeamHeader() {
+  const team = getSelectedTeam();
+  if (!team) {
+    return;
+  }
+
+  currentTeamId = team.id;
+  brandBadge.textContent = team.name;
+  pageTitle.textContent = `${team.full_name} 선수 기록`;
+  pageSubtitle.textContent = "시즌별 타자·투수 성적과 선수 검색";
+  teamSourceLink.href = `https://www.yagoonara.com/teams/${team.id}`;
+  teamSourceLink.textContent = `${team.full_name} · 야구나라`;
+  document.title = `${team.full_name} 선수 기록`;
+}
+
+async function initTeamSelect() {
+  const response = await fetch("/api/teams");
+  const payload = await response.json();
+  teams = payload.data || [];
+
+  teamSelect.innerHTML = teams
+    .map(
+      (team) =>
+        `<option value="${team.id}"${team.id === defaultTeamId ? " selected" : ""}>${team.full_name}</option>`
+    )
+    .join("");
+
+  updateTeamHeader();
 }
 
 function setLoading(isLoading) {
@@ -252,11 +293,14 @@ function renderPlayerTable() {
 
 async function loadSeasonStats() {
   const year = seasonSelect.value;
+  const team = getSelectedTeam();
   showError("");
   setLoading(true);
 
   try {
-    const response = await fetch(`/api/stats?year=${year}&type=${currentType}`);
+    const response = await fetch(
+      `/api/stats?year=${year}&type=${currentType}&team_id=${team.id}`
+    );
     const payload = await response.json();
 
     if (!payload.success) {
@@ -266,7 +310,7 @@ async function loadSeasonStats() {
     statsColumns = currentType === "hitter" ? HITTER_COLUMNS : PITCHER_COLUMNS;
     statsRows = payload.data;
     statsSort = getDefaultSort(currentType);
-    statsTitle.textContent = `${year} 시즌 ${currentType === "hitter" ? "타자" : "투수"} 성적`;
+    statsTitle.textContent = `${team.full_name} ${year} 시즌 ${currentType === "hitter" ? "타자" : "투수"} 성적`;
     statsCount.textContent = `${payload.data.length}명`;
     renderStatsTable();
   } catch (error) {
@@ -279,7 +323,10 @@ async function loadSeasonStats() {
 }
 
 async function searchPlayers(query) {
-  const response = await fetch(`/api/players/search?q=${encodeURIComponent(query)}`);
+  const team = getSelectedTeam();
+  const response = await fetch(
+    `/api/players/search?q=${encodeURIComponent(query)}&team_id=${team.id}`
+  );
   const payload = await response.json();
   return payload.data || [];
 }
@@ -326,9 +373,13 @@ async function loadPlayerDetail(playerId) {
     }
 
     const player = payload.data;
+    const team = getSelectedTeam();
     const isPitcher = (player.position || "").includes("투수");
     const stats = (isPitcher ? player.pitcher_stats : player.hitter_stats || []).filter(
-      (stat) => stat.team_id === 7 && stat.game_type === "regular" && stat.league_type === "kbo"
+      (stat) =>
+        stat.team_id === team.id &&
+        stat.game_type === "regular" &&
+        stat.league_type === "kbo"
     );
     playerTitle.textContent = `#${player.back_number ?? "-"} ${player.name}`;
     playerMeta.innerHTML = [
@@ -372,6 +423,14 @@ tabs.forEach((tab) => {
 
 loadSeasonBtn.addEventListener("click", loadSeasonStats);
 
+teamSelect.addEventListener("change", () => {
+  updateTeamHeader();
+  playerSearch.value = "";
+  searchResults.classList.add("hidden");
+  playerSection.classList.add("hidden");
+  loadSeasonStats();
+});
+
 playerSearch.addEventListener("input", () => {
   clearTimeout(searchTimer);
   const query = playerSearch.value.trim();
@@ -397,4 +456,4 @@ closePlayerBtn.addEventListener("click", () => {
 });
 
 initSeasonSelect();
-loadSeasonStats();
+initTeamSelect().then(loadSeasonStats);
