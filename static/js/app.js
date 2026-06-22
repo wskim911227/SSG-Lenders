@@ -73,6 +73,15 @@ const PLAYER_PITCHER_COLUMNS = [
   ["war", "WAR"],
 ];
 
+let statsRows = [];
+let statsColumns = HITTER_COLUMNS;
+let statsSort = { key: "ops", direction: "desc" };
+
+let playerRows = [];
+let playerColumns = PLAYER_HITTER_COLUMNS;
+let playerSort = { key: "year", direction: "desc" };
+let playerClickableName = false;
+
 function initSeasonSelect() {
   for (let year = maxSeason; year >= minSeason; year -= 1) {
     const option = document.createElement("option");
@@ -91,10 +100,96 @@ function showError(message) {
   errorBox.classList.toggle("hidden", !message);
 }
 
-function renderTable(headEl, bodyEl, columns, rows, clickableName = true) {
-  headEl.innerHTML = `<tr>${columns.map(([, label]) => `<th>${label}</th>`).join("")}</tr>`;
+const TEXT_SORT_KEYS = new Set(["name", "position"]);
 
-  bodyEl.innerHTML = rows
+function getSortValue(row, key) {
+  const value = row[key];
+  if (value == null || value === "" || value === "-") {
+    return null;
+  }
+  if (typeof value === "number") {
+    return value;
+  }
+
+  const text = String(value).trim();
+  const numeric = Number(text);
+  if (text !== "" && !Number.isNaN(numeric)) {
+    return numeric;
+  }
+
+  return text.toLowerCase();
+}
+
+function sortRows(rows, key, direction) {
+  const factor = direction === "asc" ? 1 : -1;
+
+  return [...rows].sort((left, right) => {
+    const leftValue = getSortValue(left, key);
+    const rightValue = getSortValue(right, key);
+
+    if (leftValue == null && rightValue == null) {
+      return 0;
+    }
+    if (leftValue == null) {
+      return 1;
+    }
+    if (rightValue == null) {
+      return -1;
+    }
+    if (typeof leftValue === "number" && typeof rightValue === "number") {
+      return (leftValue - rightValue) * factor;
+    }
+
+    return String(leftValue).localeCompare(String(rightValue), "ko") * factor;
+  });
+}
+
+function getDefaultSort(type) {
+  if (type === "hitter") {
+    return { key: "ops", direction: "desc" };
+  }
+  return { key: "era", direction: "asc" };
+}
+
+function getSortIndicator(key, sortState) {
+  if (sortState.key !== key) {
+    return '<span class="sort-icon muted">↕</span>';
+  }
+  return sortState.direction === "asc"
+    ? '<span class="sort-icon active">↑</span>'
+    : '<span class="sort-icon active">↓</span>';
+}
+
+function renderTable(headEl, bodyEl, columns, rows, options = {}) {
+  const {
+    clickableName = true,
+    sortState = null,
+    onSort = null,
+  } = options;
+
+  const sortedRows = sortState?.key ? sortRows(rows, sortState.key, sortState.direction) : rows;
+
+  headEl.innerHTML = `<tr>${columns
+    .map(([key, label]) => {
+      const sortable = Boolean(onSort);
+      const indicator = sortState ? getSortIndicator(key, sortState) : "";
+      if (!sortable) {
+        return `<th>${label}</th>`;
+      }
+      const activeClass = sortState?.key === key ? " sort-active" : "";
+      return `<th class="sortable${activeClass}" data-sort-key="${key}"><button type="button" class="sort-btn">${label}${indicator}</button></th>`;
+    })
+    .join("")}</tr>`;
+
+  if (onSort) {
+    headEl.querySelectorAll(".sortable").forEach((header) => {
+      header.addEventListener("click", () => {
+        onSort(header.dataset.sortKey);
+      });
+    });
+  }
+
+  bodyEl.innerHTML = sortedRows
     .map((row) => {
       const cells = columns
         .map(([key]) => {
@@ -119,6 +214,42 @@ function renderTable(headEl, bodyEl, columns, rows, clickableName = true) {
   }
 }
 
+function handleStatsSort(key) {
+  if (statsSort.key === key) {
+    statsSort.direction = statsSort.direction === "asc" ? "desc" : "asc";
+  } else {
+    statsSort.key = key;
+    statsSort.direction = TEXT_SORT_KEYS.has(key) ? "asc" : "desc";
+  }
+  renderStatsTable();
+}
+
+function renderStatsTable() {
+  renderTable(statsHead, statsBody, statsColumns, statsRows, {
+    clickableName: true,
+    sortState: statsSort,
+    onSort: handleStatsSort,
+  });
+}
+
+function handlePlayerSort(key) {
+  if (playerSort.key === key) {
+    playerSort.direction = playerSort.direction === "asc" ? "desc" : "asc";
+  } else {
+    playerSort.key = key;
+    playerSort.direction = key === "year" ? "desc" : TEXT_SORT_KEYS.has(key) ? "asc" : "desc";
+  }
+  renderPlayerTable();
+}
+
+function renderPlayerTable() {
+  renderTable(playerHead, playerBody, playerColumns, playerRows, {
+    clickableName: playerClickableName,
+    sortState: playerSort,
+    onSort: handlePlayerSort,
+  });
+}
+
 async function loadSeasonStats() {
   const year = seasonSelect.value;
   showError("");
@@ -132,10 +263,12 @@ async function loadSeasonStats() {
       throw new Error(payload.error || "성적을 불러오지 못했습니다.");
     }
 
-    const columns = currentType === "hitter" ? HITTER_COLUMNS : PITCHER_COLUMNS;
+    statsColumns = currentType === "hitter" ? HITTER_COLUMNS : PITCHER_COLUMNS;
+    statsRows = payload.data;
+    statsSort = getDefaultSort(currentType);
     statsTitle.textContent = `${year} 시즌 ${currentType === "hitter" ? "타자" : "투수"} 성적`;
     statsCount.textContent = `${payload.data.length}명`;
-    renderTable(statsHead, statsBody, columns, payload.data);
+    renderStatsTable();
   } catch (error) {
     showError(error.message);
     statsBody.innerHTML = "";
@@ -197,8 +330,6 @@ async function loadPlayerDetail(playerId) {
     const stats = (isPitcher ? player.pitcher_stats : player.hitter_stats || []).filter(
       (stat) => stat.team_id === 7 && stat.game_type === "regular" && stat.league_type === "kbo"
     );
-    stats.sort((a, b) => b.year - a.year);
-
     playerTitle.textContent = `#${player.back_number ?? "-"} ${player.name}`;
     playerMeta.innerHTML = [
       ["포지션", player.position || "-"],
@@ -216,8 +347,11 @@ async function loadPlayerDetail(playerId) {
       )
       .join("");
 
-    const columns = isPitcher ? PLAYER_PITCHER_COLUMNS : PLAYER_HITTER_COLUMNS;
-    renderTable(playerHead, playerBody, columns, stats, false);
+    playerColumns = isPitcher ? PLAYER_PITCHER_COLUMNS : PLAYER_HITTER_COLUMNS;
+    playerRows = stats;
+    playerSort = { key: "year", direction: "desc" };
+    playerClickableName = false;
+    renderPlayerTable();
     playerSection.classList.remove("hidden");
     playerSection.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {

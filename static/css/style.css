@@ -244,6 +244,48 @@ th {
   background: rgba(255, 255, 255, 0.03);
   position: sticky;
   top: 0;
+  z-index: 1;
+}
+
+th.sortable {
+  padding: 0;
+}
+
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sort-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+th.sort-active .sort-btn {
+  color: white;
+}
+
+.sort-icon {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.sort-icon.muted {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.sort-icon.active {
+  color: var(--ssg-red);
 }
 
 tbody tr:hover {
