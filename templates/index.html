@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSG 랜더스 선수 기록</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-inner">
+        <div class="brand">
+          <span class="brand-badge">SSG</span>
+          <div>
+            <h1>SSG 랜더스 선수 기록</h1>
+            <p>시즌별 타자·투수 성적과 선수 검색</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="controls card">
+        <div class="control-row">
+          <label for="seasonSelect">시즌</label>
+          <select id="seasonSelect"></select>
+          <button id="loadSeasonBtn" class="btn primary">성적 조회</button>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-type="hitter">타자</button>
+          <button class="tab" data-type="pitcher">투수</button>
+        </div>
+
+        <div class="control-row search-row">
+          <label for="playerSearch">선수 검색</label>
+          <div class="search-wrap">
+            <input id="playerSearch" type="search" placeholder="이름 또는 등번호 (예: 최정, 14)" autocomplete="off">
+            <div id="searchResults" class="search-results hidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="statsSection" class="card">
+        <div class="section-head">
+          <h2 id="statsTitle">시즌 성적</h2>
+          <span id="statsCount" class="badge">0명</span>
+        </div>
+        <div id="loading" class="loading hidden">데이터를 불러오는 중...</div>
+        <div id="error" class="error hidden"></div>
+        <div class="table-wrap">
+          <table id="statsTable">
+            <thead id="statsHead"></thead>
+            <tbody id="statsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="playerSection" class="card hidden">
+        <div class="section-head">
+          <h2 id="playerTitle">선수 상세</h2>
+          <button id="closePlayerBtn" class="btn ghost">닫기</button>
+        </div>
+        <div id="playerMeta" class="player-meta"></div>
+        <div class="table-wrap">
+          <table id="playerTable">
+            <thead id="playerHead"></thead>
+            <tbody id="playerBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>데이터 출처: <a href="https://www.yagoonara.com/teams/7" target="_blank" rel="noopener">야구나라</a> · SK/SSG 역대 선수 기록 기준</p>
+    </footer>
+  </div>
+
+  <script>
+    window.APP_CONFIG = {
+      minSeason: {{ min_season }},
+      maxSeason: {{ max_season }},
+    };
+  </script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
